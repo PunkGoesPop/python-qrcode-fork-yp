@@ -1,7 +1,6 @@
 from typing import TYPE_CHECKING
 
 from PIL import Image, ImageDraw
-
 from qrcode.image.styles.moduledrawers.base import QRModuleDrawer
 
 if TYPE_CHECKING:
@@ -23,6 +22,15 @@ class StyledPilQRModuleDrawer(QRModuleDrawer):
     """
 
     img: "StyledPilImage"
+    color = None
+
+    """sumary_line
+    NOTE: Custom solution. Look for fill=self.img.paint_color to return to initial state. added by Yevhen Pavlenko
+    """
+    
+    def __init__(self, color_tup=None):
+        self.color = color_tup
+        super().__init__()
 
 
 class SquareModuleDrawer(StyledPilQRModuleDrawer):
@@ -36,7 +44,7 @@ class SquareModuleDrawer(StyledPilQRModuleDrawer):
 
     def drawrect(self, box, is_active: bool):
         if is_active:
-            self.imgDraw.rectangle(box, fill=self.img.paint_color)
+            self.imgDraw.rectangle(box, self.img.paint_color if self.color is None else self.color)
 
 
 class GappedSquareModuleDrawer(StyledPilQRModuleDrawer):
@@ -47,8 +55,9 @@ class GappedSquareModuleDrawer(StyledPilQRModuleDrawer):
     the space they are printed in
     """
 
-    def __init__(self, size_ratio=0.8):
+    def __init__(self, color_tup=None, size_ratio=0.8):
         self.size_ratio = size_ratio
+        self.color = color_tup
 
     def initialize(self, *args, **kwargs):
         super().initialize(*args, **kwargs)
@@ -63,7 +72,7 @@ class GappedSquareModuleDrawer(StyledPilQRModuleDrawer):
                 box[1][0] - self.delta,
                 box[1][1] - self.delta,
             )
-            self.imgDraw.rectangle(smaller_box, fill=self.img.paint_color)
+            self.imgDraw.rectangle(smaller_box, fill=self.img.paint_color if self.color is None else self.color)
 
 
 class CircleModuleDrawer(StyledPilQRModuleDrawer):
@@ -83,44 +92,9 @@ class CircleModuleDrawer(StyledPilQRModuleDrawer):
             self.img.color_mask.back_color,
         )
         ImageDraw.Draw(self.circle).ellipse(
-            (0, 0, fake_size, fake_size), fill=self.img.paint_color
+            (0, 0, fake_size, fake_size), fill=self.img.paint_color if self.color is None else self.color
         )
         self.circle = self.circle.resize((box_size, box_size), Image.Resampling.LANCZOS)
-
-    def drawrect(self, box, is_active: bool):
-        if is_active:
-            self.img._img.paste(self.circle, (box[0][0], box[0][1]))
-
-
-class GappedCircleModuleDrawer(StyledPilQRModuleDrawer):
-    """
-    Draws the modules as circles that are not contiguous.
-
-    The size_ratio determines how wide the circles are relative to the width of
-    the space they are printed in
-    """
-
-    circle = None
-
-    def __init__(self, size_ratio=0.9):
-        self.size_ratio = size_ratio
-
-    def initialize(self, *args, **kwargs):
-        super().initialize(*args, **kwargs)
-        box_size = self.img.box_size
-        fake_size = box_size * ANTIALIASING_FACTOR
-        self.circle = Image.new(
-            self.img.mode,
-            (fake_size, fake_size),
-            self.img.color_mask.back_color,
-        )
-        ImageDraw.Draw(self.circle).ellipse(
-            (0, 0, fake_size, fake_size), fill=self.img.paint_color
-        )
-        smaller_size = int(self.size_ratio * box_size)
-        self.circle = self.circle.resize(
-            (smaller_size, smaller_size), Image.Resampling.LANCZOS
-        )
 
     def drawrect(self, box, is_active: bool):
         if is_active:
@@ -139,8 +113,9 @@ class RoundedModuleDrawer(StyledPilQRModuleDrawer):
 
     needs_neighbors = True
 
-    def __init__(self, radius_ratio=1):
+    def __init__(self, radius_ratio=1,*args, **kwargs):
         self.radius_ratio = radius_ratio
+        super().__init__(*args, **kwargs)
 
     def initialize(self, *args, **kwargs):
         super().initialize(*args, **kwargs)
@@ -150,7 +125,7 @@ class RoundedModuleDrawer(StyledPilQRModuleDrawer):
     def setup_corners(self):
         mode = self.img.mode
         back_color = self.img.color_mask.back_color
-        front_color = self.img.paint_color
+        front_color = self.img.paint_color if self.color is None else self.color
         self.SQUARE = Image.new(
             mode, (self.corner_width, self.corner_width), front_color
         )
@@ -202,7 +177,8 @@ class VerticalBarsDrawer(StyledPilQRModuleDrawer):
 
     needs_neighbors = True
 
-    def __init__(self, horizontal_shrink=0.8):
+    def __init__(self, color_tup=None, horizontal_shrink=0.8):
+        self.color = color_tup
         self.horizontal_shrink = horizontal_shrink
 
     def initialize(self, *args, **kwargs):
@@ -214,7 +190,7 @@ class VerticalBarsDrawer(StyledPilQRModuleDrawer):
     def setup_edges(self):
         mode = self.img.mode
         back_color = self.img.color_mask.back_color
-        front_color = self.img.paint_color
+        front_color = self.img.paint_color if self.color is None else self.color
 
         height = self.half_height
         width = height * 2
@@ -255,8 +231,9 @@ class HorizontalBarsDrawer(StyledPilQRModuleDrawer):
 
     needs_neighbors = True
 
-    def __init__(self, vertical_shrink=0.8):
+    def __init__(self, color_tup=None,vertical_shrink=0.8):
         self.vertical_shrink = vertical_shrink
+        self.color = color_tup
 
     def initialize(self, *args, **kwargs):
         super().initialize(*args, **kwargs)
@@ -267,7 +244,7 @@ class HorizontalBarsDrawer(StyledPilQRModuleDrawer):
     def setup_edges(self):
         mode = self.img.mode
         back_color = self.img.color_mask.back_color
-        front_color = self.img.paint_color
+        front_color = self.img.paint_color if self.color is None else self.color
 
         width = self.half_width
         height = width * 2
